@@ -114,6 +114,15 @@ input[type=range]{width:100%; accent-color:var(--accent); margin-top:5px}
 .plist li{display:flex; align-items:center; gap:9px; padding:4px 6px; border-radius:7px; background:var(--surface-2)}
 .sw{width:16px; height:16px; border-radius:50%; flex:0 0 auto; border:2px solid var(--surface)}
 .plist .nm{font-family:var(--mono); font-size:12px; font-weight:500}
+.sw-input{
+  width:20px; height:20px; padding:0; border:2px solid var(--surface); border-radius:50%;
+  background:none; cursor:pointer; flex:0 0 auto; box-shadow:0 0 0 1px var(--line);
+  -webkit-appearance:none; appearance:none;
+}
+.sw-input::-webkit-color-swatch-wrapper{padding:0}
+.sw-input::-webkit-color-swatch{border:none; border-radius:50%}
+.sw-input::-moz-color-swatch{border:none; border-radius:50%}
+.sw-input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 .plist .meta{font-family:var(--mono); font-size:11px; color:var(--muted); margin-left:auto; font-variant-numeric:tabular-nums}
 
 .chips{display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; min-height:30px}
@@ -240,6 +249,7 @@ footer.foot a{color:var(--accent)}
         <div class="row">
           <button class="btn small" id="addBtn" type="button">Add player</button>
           <button class="btn small ghost" id="spreadBtn" type="button">Spread out</button>
+          <button class="btn small ghost" id="colourBtn" type="button">Reset colours</button>
         </div>
       </section>
 
@@ -293,8 +303,11 @@ footer.foot a{color:var(--accent)}
 var VW = 1600, VH = 1000, MARGIN = 62, R = 34;
 var MIN_SEP = 0.19;
 var STORE_KEY = "psd.setups.v1";
-var KITS = ["#e8489a","#f2c230","#2f7fd1","#d9352c","#8b5cf6","#0d9488",
-            "#ea580c","#7c3aed","#0891b2","#16a34a","#db2777","#64748b"];
+// Ordered so that the first N stay as distinguishable as possible, including
+// under red-green colour blindness. Every entry is a plausible kit colour.
+var KITS = ["#1f6fd0","#ffffff","#ea580c","#1c1c22","#9ca3af","#7c3f12",
+            "#facc15","#22d3ee","#13a05a","#065f46","#7c3aed","#d9352c"];
+var COLOUR_MIN = 110;
 
 var SLOTS = {
   A:[0.14,0.24], B:[0.40,0.12], C:[0.68,0.20],
@@ -334,6 +347,42 @@ function loadPreset(key){
   stop(); renderAll();
 }
 function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+/* colour separation, including simulated red-green colour blindness */
+var DEUT = [[.625,.375,0],[.700,.300,0],[0,.300,.700]];
+var PROT = [[.567,.433,0],[.558,.442,0],[0,.242,.758]];
+function hex2rgb(h){
+  h = String(h).replace("#","");
+  if(h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return [parseInt(h.substr(0,2),16), parseInt(h.substr(2,2),16), parseInt(h.substr(4,2),16)];
+}
+function mx(c, M){
+  return [M[0][0]*c[0]+M[0][1]*c[1]+M[0][2]*c[2],
+          M[1][0]*c[0]+M[1][1]*c[1]+M[1][2]*c[2],
+          M[2][0]*c[0]+M[2][1]*c[1]+M[2][2]*c[2]];
+}
+function redmean(a,b){
+  var rm=(a[0]+b[0])/2, dr=a[0]-b[0], dg=a[1]-b[1], db=a[2]-b[2];
+  return Math.sqrt((2+rm/256)*dr*dr + 4*dg*dg + (2+(255-rm)/256)*db*db);
+}
+function colourGap(h1,h2){
+  var a = hex2rgb(h1), b = hex2rgb(h2);
+  return { normal: redmean(a,b),
+           cvd: Math.min(redmean(mx(a,DEUT), mx(b,DEUT)), redmean(mx(a,PROT), mx(b,PROT))) };
+}
+function colourCheck(){
+  var worstN = Infinity, worstC = Infinity, clash = null, cvdOnly = null;
+  for(var i=0;i<state.players.length;i++)
+    for(var j=i+1;j<state.players.length;j++){
+      var g = colourGap(state.players[i].color, state.players[j].color);
+      if(g.normal < worstN) worstN = g.normal;
+      if(g.cvd < worstC) worstC = g.cvd;
+      if(g.normal < COLOUR_MIN && !clash) clash = [i+1, j+1];
+      if(g.normal >= COLOUR_MIN && g.cvd < COLOUR_MIN && !cvdOnly) cvdOnly = [i+1, j+1];
+    }
+  return { normal: isFinite(worstN) ? worstN : 0, cvd: isFinite(worstC) ? worstC : 0,
+           clash: clash, cvdOnly: cvdOnly };
+}
 function sw(d){ return d / VW; }
 
 function passList(){
@@ -444,8 +493,14 @@ function renderList(){
   state.seq.forEach(function(id){ counts[id] = (counts[id]||0)+1; });
   state.players.forEach(function(p, i){
     var li = document.createElement("li");
-    var sw0 = document.createElement("span");
-    sw0.className = "sw"; sw0.style.background = p.color;
+    var sw0 = document.createElement("input");
+    sw0.type = "color"; sw0.className = "sw-input"; sw0.value = p.color;
+    sw0.title = "Change kit colour";
+    sw0.setAttribute("aria-label", "Kit colour for player " + (i+1));
+    sw0.addEventListener("input", function(e){
+      p.color = e.target.value;
+      drawPlayers(); renderChips(); renderMetrics(); renderExport();
+    });
     var nm = document.createElement("span");
     nm.className = "nm"; nm.textContent = "Player " + (i+1);
     var meta = document.createElement("span");
@@ -500,6 +555,9 @@ function renderMetrics(){
   add("Shortest / longest", m.min.toFixed(3) + " / " + m.max.toFixed(3));
   add("Closest two players", m.minSep ? m.minSep.toFixed(3) + " sw" : "—",
       m.offenders.length ? "bad" : (m.minSep ? "good" : ""));
+  var cc = colourCheck();
+  add("Closest two colours", state.players.length > 1 ? Math.round(cc.normal) : "\u2014",
+      cc.clash ? "bad" : (state.players.length > 1 ? "good" : ""));
   add("Players never touched", String(m.untouched), m.untouched ? "bad" : "good");
   add("Players touched twice+", String(m.repeats));
   add("Sequence duration", m.total.toFixed(2) + " s");
@@ -511,6 +569,17 @@ function renderMetrics(){
       "</strong> sit closer than the " + MIN_SEP.toFixed(2) +
       " screen-width minimum. Tap targets may overlap and the ball's path gets hard to follow.";
     box.appendChild(w);
+  }
+  if(cc.clash){
+    var cw = document.createElement("p"); cw.className = "note alert";
+    cw.innerHTML = "Players <strong>" + cc.clash[0] + "</strong> and <strong>" + cc.clash[1] +
+      "</strong> are too close in colour. Colour is the only thing telling players apart.";
+    box.appendChild(cw);
+  } else if(cc.cvdOnly){
+    var cv = document.createElement("p"); cv.className = "note";
+    cv.innerHTML = "Players <strong>" + cc.cvdOnly[0] + "</strong> and <strong>" + cc.cvdOnly[1] +
+      "</strong> look alike with red-green colour blindness, which affects about 1 boy in 12.";
+    box.appendChild(cv);
   }
   if(m.untouched === 0 && m.repeats === 0 && m.passes > 0){
     var n = document.createElement("p"); n.className = "note";
@@ -530,7 +599,8 @@ function renderExport(){
     windUpMs: state.pauseMs,
     meanPassDistance: Number(m.mean.toFixed(4)),
     players: state.players.map(function(p, i){
-      return { id: "P" + (i+1), x: Number((p.x/VW).toFixed(4)), y: Number((p.y/VH).toFixed(4)) };
+      return { id: "P" + (i+1), colour: p.color,
+               x: Number((p.x/VW).toFixed(4)), y: Number((p.y/VH).toFixed(4)) };
     }),
     sequence: state.seq.map(function(id){ return "P" + (state.players.indexOf(byId(id))+1); })
   };
@@ -712,6 +782,10 @@ $("playBtn").addEventListener("click", function(){ if(play.on){ stop(); } else {
 $("stopBtn").addEventListener("click", stop);
 $("addBtn").addEventListener("click", addPlayer);
 $("spreadBtn").addEventListener("click", spread);
+$("colourBtn").addEventListener("click", function(){
+  state.players.forEach(function(p, i){ p.color = KITS[i % KITS.length]; });
+  renderAll();
+});
 $("undoBtn").addEventListener("click", function(){ state.seq.pop(); stop(); renderAll(); });
 $("clearBtn").addEventListener("click", function(){ state.seq = []; stop(); renderAll(); });
 Array.prototype.forEach.call(document.querySelectorAll("[data-preset]"), function(b){
