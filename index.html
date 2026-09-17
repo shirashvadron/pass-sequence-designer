@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pass Sequence Designer</title>
+<meta name="description" content="Lay out players on an 11-inch tablet screen, design a pass sequence, and play it back at a set pass speed. A stimulus-design tool for a sequential working-memory task.">
+<meta property="og:title" content="Pass Sequence Designer">
+<meta property="og:description" content="Design and simulate football-pass sequences for a sequential working-memory task.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2032%2032'%3E%3Crect%20width='32'%20height='32'%20rx='7'%20fill='%231c6b52'/%3E%3Ccircle%20cx='16'%20cy='16'%20r='7'%20fill='%23ffffff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  color-scheme:light dark;
+  --bg:#eaeee9; --surface:#ffffff; --surface-2:#f3f6f2;
+  --ink:#141a15; --muted:#5c6a5d; --line:#d2dad1; --line-2:#e2e8e1;
+  --accent:#1c6b52; --accent-ink:#ffffff; --accent-soft:#d8ece3;
+  --turf:#dde9d8; --turf-line:#c3d6bd; --bezel:#b9c3b7;
+  --warn:#a33517; --warn-soft:#fae2da;
+  --ok:#1c6b52;
+  --ball:#ffffff; --ball-line:#1b2a1c;
+  --shadow:0 1px 2px rgba(20,26,21,.06), 0 4px 14px rgba(20,26,21,.05);
+  --font:"Archivo","Helvetica Neue",Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#11150f; --surface:#191e19; --surface-2:#202720;
+    --ink:#e8eee7; --muted:#97a497; --line:#2c352c; --line-2:#242c24;
+    --accent:#4fbb94; --accent-ink:#06130d; --accent-soft:#12352a;
+    --turf:#1b2a1c; --turf-line:#263826; --bezel:#333c33;
+    --warn:#ef8c6b; --warn-soft:#34170f;
+    --ok:#4fbb94;
+    --ball:#f4f7f3; --ball-line:#0b120c;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11150f; --surface:#191e19; --surface-2:#202720;
+  --ink:#e8eee7; --muted:#97a497; --line:#2c352c; --line-2:#242c24;
+  --accent:#4fbb94; --accent-ink:#06130d; --accent-soft:#12352a;
+  --turf:#1b2a1c; --turf-line:#263826; --bezel:#333c33;
+  --warn:#ef8c6b; --warn-soft:#34170f;
+  --ok:#4fbb94;
+  --ball:#f4f7f3; --ball-line:#0b120c;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.3);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+img{max-width:100%}
+[hidden]{display:none !important}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:var(--font); font-size:14px; line-height:1.5;
+  padding-inline:16px; padding-block:18px 40px;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1360px; margin:0 auto}
+
+header.top{display:flex; flex-wrap:wrap; align-items:flex-end; gap:12px 20px; margin-bottom:16px}
+h1{font-size:22px; font-weight:700; letter-spacing:-.01em; margin:0; text-wrap:balance}
+.sub{color:var(--muted); font-size:13px; margin:2px 0 0}
+.spacer{flex:1 1 auto}
+
+.eyebrow{
+  font-size:10.5px; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--muted); margin:0 0 8px;
+}
+
+.layout{display:grid; grid-template-columns:minmax(0,1fr) 336px; gap:18px; align-items:start}
+@media (max-width:960px){ .layout{grid-template-columns:minmax(0,1fr)} }
+
+.stagewrap{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px; box-shadow:var(--shadow)}
+.devicelabel{display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:10px; flex-wrap:wrap}
+.devicelabel .n{font-family:var(--mono); font-size:11.5px; color:var(--muted)}
+.bezel{background:var(--bezel); border-radius:14px; padding:10px; max-width:100%}
+svg.stage{display:block; width:100%; height:auto; max-width:100%; aspect-ratio:16/10; background:var(--turf); border-radius:6px; touch-action:none}
+.pdot{cursor:grab}
+.pdot:active{cursor:grabbing}
+.pdot circle.hit{fill:transparent}
+.pdot text{font-family:var(--mono); font-size:30px; font-weight:600; pointer-events:none; user-select:none}
+.pulse{transform-box:fill-box; transform-origin:center}
+
+.transport{margin-top:14px; display:flex; flex-wrap:wrap; gap:10px 14px; align-items:center}
+.btn{
+  font-family:var(--font); font-size:13px; font-weight:600; color:var(--ink);
+  background:var(--surface-2); border:1px solid var(--line); border-radius:8px;
+  padding:7px 12px; cursor:pointer;
+}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.btn[disabled]{opacity:.45; cursor:not-allowed}
+.btn.primary{background:var(--accent); border-color:var(--accent); color:var(--accent-ink)}
+.btn.small{padding:4px 8px; font-size:12px}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--warn); border-color:var(--line)}
+.btn.danger:hover{border-color:var(--warn)}
+
+.sliders{display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:14px; margin-top:14px}
+.slider label{display:flex; justify-content:space-between; align-items:baseline; gap:8px; font-size:12px; color:var(--muted); font-weight:600}
+.slider label b{font-family:var(--mono); font-size:12.5px; color:var(--ink); font-weight:500; font-variant-numeric:tabular-nums}
+input[type=range]{width:100%; accent-color:var(--accent); margin-top:5px}
+.progress{height:4px; background:var(--line-2); border-radius:99px; overflow:hidden; margin-top:12px}
+.progress i{display:block; height:100%; width:0; background:var(--accent); border-radius:99px}
+
+.rail{display:flex; flex-direction:column; gap:14px}
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px; box-shadow:var(--shadow)}
+.panel h2{font-size:13px; font-weight:700; margin:0 0 10px; letter-spacing:-.005em}
+.row{display:flex; gap:8px; flex-wrap:wrap}
+
+.plist{display:flex; flex-direction:column; gap:5px; margin:0 0 10px; padding:0; list-style:none; max-height:214px; overflow-y:auto}
+.plist li{display:flex; align-items:center; gap:9px; padding:4px 6px; border-radius:7px; background:var(--surface-2)}
+.sw{width:16px; height:16px; border-radius:50%; flex:0 0 auto; border:2px solid var(--surface)}
+.plist .nm{font-family:var(--mono); font-size:12px; font-weight:500}
+.plist .meta{font-family:var(--mono); font-size:11px; color:var(--muted); margin-left:auto; font-variant-numeric:tabular-nums}
+
+.chips{display:flex; flex-wrap:wrap; gap:5px; margin-bottom:10px; min-height:30px}
+.chip{
+  display:inline-flex; align-items:center; gap:5px; padding:3px 6px 3px 4px;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:99px;
+  font-family:var(--mono); font-size:11px; font-variant-numeric:tabular-nums;
+}
+.chip .sw{width:13px; height:13px; border-width:1.5px}
+.chip button{
+  border:0; background:none; color:var(--muted); cursor:pointer; font-size:14px;
+  line-height:1; padding:0 2px; font-family:var(--font);
+}
+.chip button:hover{color:var(--warn)}
+.empty{color:var(--muted); font-size:12px; font-style:italic}
+
+.metrics{display:grid; grid-template-columns:1fr auto; gap:5px 12px; font-size:12.5px}
+.metrics dt{color:var(--muted)}
+.metrics dd{margin:0; font-family:var(--mono); font-weight:500; text-align:right; font-variant-numeric:tabular-nums}
+.metrics dd.bad{color:var(--warn)}
+.metrics dd.good{color:var(--ok)}
+
+.note{
+  font-size:12px; line-height:1.45; border-radius:8px; padding:8px 10px; margin-top:10px;
+  background:var(--surface-2); color:var(--muted);
+}
+.note.alert{background:var(--warn-soft); color:var(--warn)}
+.note strong{color:inherit}
+
+.saverow{display:flex; gap:6px; margin-bottom:10px}
+input[type=text]{
+  flex:1 1 auto; min-width:0; font-family:var(--font); font-size:13px; color:var(--ink);
+  background:var(--surface-2); border:1px solid var(--line); border-radius:8px; padding:6px 9px;
+}
+input[type=text]:focus-visible{outline:2px solid var(--accent); outline-offset:1px}
+.setups{list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:5px; max-height:190px; overflow-y:auto}
+.setups li{display:flex; align-items:center; gap:8px; padding:5px 7px; background:var(--surface-2); border-radius:7px}
+.setups .snm{font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.setups .sdt{font-family:var(--mono); font-size:10.5px; color:var(--muted); margin-left:auto; flex:0 0 auto}
+
+pre.export{
+  font-family:var(--mono); font-size:11px; line-height:1.5; background:var(--surface-2);
+  border:1px solid var(--line-2); border-radius:8px; padding:10px; margin:0 0 10px;
+  max-height:190px; overflow:auto; white-space:pre; color:var(--ink);
+}
+footer.foot{
+  max-width:1360px; margin:22px auto 0; color:var(--muted); font-size:12px;
+  border-top:1px solid var(--line); padding-top:14px;
+}
+footer.foot a{color:var(--accent)}
+@media (prefers-reduced-motion:reduce){ *{transition:none !important} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Pass Sequence Designer</h1>
+      <p class="sub">Drag players, build a pass order, run it at the real pass speed.</p>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn ghost small" id="themeBtn" type="button">Dark / light</button>
+  </header>
+
+  <div class="layout">
+    <div>
+      <section class="stagewrap">
+        <div class="devicelabel">
+          <p class="eyebrow" style="margin:0">Play area</p>
+          <span class="n">11-inch tablet · 16:10 · 2560 × 1600 px</span>
+        </div>
+        <div class="bezel">
+          <svg class="stage" id="stage" viewBox="0 0 1600 1000" role="img" aria-label="Pitch with draggable players and the pass sequence">
+            <defs>
+              <marker id="arw" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="5.5" markerHeight="5.5" orient="auto-start-reverse">
+                <path d="M0,1 L9,5 L0,9 z" fill="var(--accent)"></path>
+              </marker>
+            </defs>
+            <g id="gPitch"></g>
+            <g id="gArrows"></g>
+            <g id="gPlayers"></g>
+            <g id="gBall"></g>
+          </svg>
+        </div>
+
+        <div class="transport">
+          <button class="btn primary" id="playBtn" type="button">Play sequence</button>
+          <button class="btn" id="stopBtn" type="button">Reset</button>
+          <div class="spacer"></div>
+          <span id="clock" style="font-family:var(--mono);font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums">0.00 s / 0.00 s</span>
+        </div>
+        <div class="progress"><i id="bar"></i></div>
+
+        <div class="sliders">
+          <div class="slider">
+            <label for="speed">Pass speed <b><span id="speedV">0.15</span> screen-w/s</b></label>
+            <input type="range" id="speed" min="4" max="80" step="1" value="15">
+          </div>
+          <div class="slider">
+            <label for="pause">Pause at each player <b><span id="pauseV">167</span> ms</b></label>
+            <input type="range" id="pause" min="0" max="800" step="1" value="167">
+          </div>
+        </div>
+        <p class="note">The pause is the wind-up before the ball is released. Everything after contact runs while the ball is already in flight, so it costs no extra time.</p>
+      </section>
+    </div>
+
+    <div class="rail">
+
+      <section class="panel">
+        <h2>Levels</h2>
+        <p class="eyebrow">Load a preset</p>
+        <div class="row">
+          <button class="btn small" data-preset="short" type="button">Short · 6 / 7</button>
+          <button class="btn small" data-preset="medium" type="button">Medium · 7 / 8</button>
+          <button class="btn small" data-preset="long" type="button">Long · 8 / 9</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Players</h2>
+        <ul class="plist" id="plist"></ul>
+        <div class="row">
+          <button class="btn small" id="addBtn" type="button">Add player</button>
+          <button class="btn small ghost" id="spreadBtn" type="button">Spread out</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Pass sequence</h2>
+        <p class="eyebrow">Tap players on the pitch, in order</p>
+        <div class="chips" id="chips"></div>
+        <div class="row">
+          <button class="btn small" id="undoBtn" type="button">Undo last</button>
+          <button class="btn small danger" id="clearBtn" type="button">Clear</button>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Measurements</h2>
+        <dl class="metrics" id="metrics"></dl>
+        <div id="warnBox"></div>
+      </section>
+
+      <section class="panel" id="savePanel" hidden>
+        <h2>Saved setups</h2>
+        <div class="saverow">
+          <input type="text" id="setupName" placeholder="Name this setup" autocomplete="off">
+          <button class="btn small primary" id="saveBtn" type="button">Save</button>
+        </div>
+        <ul class="setups" id="setups"></ul>
+        <p class="note">Saved in this browser only. Use <strong>Copy JSON</strong> below to share a setup with someone else.</p>
+      </section>
+
+      <section class="panel">
+        <h2>Hand to the developers</h2>
+        <pre class="export" id="export"></pre>
+        <button class="btn small" id="copyBtn" type="button">Copy JSON</button>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<footer class="foot">
+  <div class="wrap" style="padding:0">
+    Positions are normalised to the screen: <code>x</code> as a fraction of width, <code>y</code> of height.
+    Distances are in screen-widths, so they hold at any resolution.
+  </div>
+</footer>
+
+<script>
+(function(){
+"use strict";
+
+var VW = 1600, VH = 1000, MARGIN = 62, R = 34;
+var MIN_SEP = 0.19;
+var STORE_KEY = "psd.setups.v1";
+var KITS = ["#e8489a","#f2c230","#2f7fd1","#d9352c","#8b5cf6","#0d9488",
+            "#ea580c","#7c3aed","#0891b2","#16a34a","#db2777","#64748b"];
+
+var SLOTS = {
+  A:[0.14,0.24], B:[0.40,0.12], C:[0.68,0.20],
+  D:[0.88,0.40], E:[0.50,0.44], F:[0.22,0.52],
+  G:[0.74,0.62], H:[0.42,0.78], I:[0.86,0.86]
+};
+var PRESETS = {
+  short:  {use:"ACDFGHI",   seq:"AFCDHGI"},
+  medium: {use:"ABCDFGHI",  seq:"BACDIGFH"},
+  long:   {use:"ABCDEFGHI", seq:"BACFEHGID"}
+};
+
+var state = { players:[], seq:[], speed:0.15, pauseMs:167 };
+var uid = 0;
+var play = { on:false, t0:0, raf:0, elapsed:0 };
+
+var $ = function(id){ return document.getElementById(id); };
+var svg = $("stage");
+
+function newPlayer(x,y){
+  return { id:"p"+(++uid), x:x, y:y, color:KITS[(uid-1)%KITS.length] };
+}
+function byId(id){
+  for(var i=0;i<state.players.length;i++) if(state.players[i].id===id) return state.players[i];
+  return null;
+}
+function loadPreset(key){
+  var p = PRESETS[key], map = {};
+  state.players = []; uid = 0;
+  p.use.split("").forEach(function(k){
+    var s = SLOTS[k];
+    var pl = newPlayer(s[0]*VW, s[1]*VH);
+    map[k] = pl.id;
+    state.players.push(pl);
+  });
+  state.seq = p.seq.split("").map(function(k){ return map[k]; });
+  stop(); renderAll();
+}
+function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+function sw(d){ return d / VW; }
+
+function passList(){
+  var out = [];
+  for(var i=0;i<state.seq.length-1;i++){
+    var a = byId(state.seq[i]), b = byId(state.seq[i+1]);
+    if(a && b) out.push({from:a, to:b, d:dist(a,b)});
+  }
+  return out;
+}
+function metrics(){
+  var ps = passList();
+  var ds = ps.map(function(p){ return sw(p.d); });
+  var mean = ds.length ? ds.reduce(function(s,v){return s+v;},0)/ds.length : 0;
+  var minSep = Infinity, offenders = [];
+  for(var i=0;i<state.players.length;i++)
+    for(var j=i+1;j<state.players.length;j++){
+      var d = sw(dist(state.players[i], state.players[j]));
+      if(d < minSep) minSep = d;
+      if(d < MIN_SEP) offenders.push([state.players[i], state.players[j], d]);
+    }
+  var touched = {};
+  state.seq.forEach(function(id){ touched[id] = (touched[id]||0)+1; });
+  var distinct = Object.keys(touched).length;
+  var repeats = 0;
+  Object.keys(touched).forEach(function(k){ if(touched[k]>1) repeats++; });
+  var flight = ds.reduce(function(s,v){ return s + v/state.speed; }, 0);
+  var total = flight + ps.length * (state.pauseMs/1000);
+  return {
+    passes: ps.length, touches: state.seq.length, players: state.players.length,
+    mean: mean, min: ds.length ? Math.min.apply(null,ds) : 0,
+    max: ds.length ? Math.max.apply(null,ds) : 0,
+    minSep: state.players.length > 1 ? minSep : 0, offenders: offenders,
+    distinct: distinct, untouched: state.players.length - distinct, repeats: repeats,
+    total: total
+  };
+}
+
+function el(tag, attrs){
+  var n = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for(var k in attrs) n.setAttribute(k, attrs[k]);
+  return n;
+}
+function drawPitch(){
+  var g = $("gPitch"); g.textContent = "";
+  var m = 26;
+  g.appendChild(el("rect",{x:m,y:m,width:VW-2*m,height:VH-2*m,fill:"none",
+    stroke:"var(--turf-line)","stroke-width":3,rx:10}));
+  g.appendChild(el("line",{x1:VW/2,y1:m,x2:VW/2,y2:VH-m,stroke:"var(--turf-line)","stroke-width":3}));
+  g.appendChild(el("circle",{cx:VW/2,cy:VH/2,r:118,fill:"none",stroke:"var(--turf-line)","stroke-width":3}));
+  [[m,0],[VW-m-190,0]].forEach(function(b){
+    g.appendChild(el("rect",{x:b[0],y:VH/2-210,width:190,height:420,fill:"none",
+      stroke:"var(--turf-line)","stroke-width":3}));
+  });
+}
+function arcPath(a,b,bend){
+  var dx=b.x-a.x, dy=b.y-a.y, L=Math.hypot(dx,dy)||1;
+  var ux=dx/L, uy=dy/L;
+  var x1=a.x+ux*(R+6), y1=a.y+uy*(R+6), x2=b.x-ux*(R+14), y2=b.y-uy*(R+14);
+  var mx=(x1+x2)/2, my=(y1+y2)/2;
+  var L2=Math.hypot(x2-x1,y2-y1)||1;
+  var cx=mx-(y2-y1)/L2*L2*bend, cy=my+(x2-x1)/L2*L2*bend;
+  return {d:"M"+x1+","+y1+" Q"+cx+","+cy+" "+x2+","+y2,
+          mid:{x:(x1+2*cx+x2)/4, y:(y1+2*cy+y2)/4},
+          p0:{x:x1,y:y1}, c:{x:cx,y:cy}, p1:{x:x2,y:y2}};
+}
+function drawArrows(){
+  var g = $("gArrows"); g.textContent = "";
+  passList().forEach(function(p, i){
+    var a = arcPath(p.from, p.to, 0.10);
+    g.appendChild(el("path",{d:a.d,fill:"none",stroke:"var(--accent)","stroke-width":5,
+      "stroke-dasharray":"16 11","stroke-linecap":"round","marker-end":"url(#arw)",opacity:.92}));
+    g.appendChild(el("circle",{cx:a.mid.x,cy:a.mid.y,r:24,fill:"var(--surface)",
+      stroke:"var(--accent)","stroke-width":3.5}));
+    var t = el("text",{x:a.mid.x,y:a.mid.y+10,"text-anchor":"middle",
+      fill:"var(--accent)","font-family":"var(--mono)","font-size":"27","font-weight":"600"});
+    t.textContent = String(i+1);
+    g.appendChild(t);
+  });
+}
+function drawPlayers(){
+  var g = $("gPlayers"); g.textContent = "";
+  state.players.forEach(function(p, idx){
+    var grp = el("g",{class:"pdot","data-id":p.id,tabindex:"0",role:"button"});
+    grp.appendChild(el("circle",{class:"hit",cx:p.x,cy:p.y,r:R+22}));
+    var c = el("circle",{class:"pulse",cx:p.x,cy:p.y,r:R,fill:p.color,
+      stroke:"var(--turf)","stroke-width":7});
+    c.setAttribute("data-c", p.id);
+    grp.appendChild(c);
+    var t = el("text",{x:p.x,y:p.y+11,"text-anchor":"middle",fill:"#fff"});
+    t.textContent = String(idx+1);
+    grp.appendChild(t);
+    g.appendChild(grp);
+  });
+}
+function drawBall(at){
+  var g = $("gBall"); g.textContent = "";
+  if(!at) return;
+  g.appendChild(el("ellipse",{cx:at.x,cy:at.y+at.lift+3,rx:16,ry:7,
+    fill:"var(--ball-line)",opacity:.22}));
+  g.appendChild(el("circle",{cx:at.x,cy:at.y-at.lift,r:15+at.lift*0.12,
+    fill:"var(--ball)",stroke:"var(--ball-line)","stroke-width":3}));
+}
+
+function renderList(){
+  var ul = $("plist"); ul.textContent = "";
+  var counts = {};
+  state.seq.forEach(function(id){ counts[id] = (counts[id]||0)+1; });
+  state.players.forEach(function(p, i){
+    var li = document.createElement("li");
+    var sw0 = document.createElement("span");
+    sw0.className = "sw"; sw0.style.background = p.color;
+    var nm = document.createElement("span");
+    nm.className = "nm"; nm.textContent = "Player " + (i+1);
+    var meta = document.createElement("span");
+    var c = counts[p.id] || 0;
+    meta.className = "meta";
+    meta.textContent = c === 0 ? "not used" : (c + (c>1 ? " touches" : " touch"));
+    var del = document.createElement("button");
+    del.className = "btn small danger"; del.type = "button"; del.textContent = "Remove";
+    del.addEventListener("click", function(){ removePlayer(p.id); });
+    li.appendChild(sw0); li.appendChild(nm); li.appendChild(meta); li.appendChild(del);
+    ul.appendChild(li);
+  });
+  if(!state.players.length){
+    var e = document.createElement("li"); e.className = "empty";
+    e.textContent = "No players yet — add one, or load a level preset.";
+    ul.appendChild(e);
+  }
+}
+function renderChips(){
+  var box = $("chips"); box.textContent = "";
+  if(!state.seq.length){
+    var e = document.createElement("span"); e.className = "empty";
+    e.textContent = "Empty — tap players on the pitch to build the order.";
+    box.appendChild(e); return;
+  }
+  state.seq.forEach(function(id, i){
+    var p = byId(id); if(!p) return;
+    var chip = document.createElement("span"); chip.className = "chip";
+    var s = document.createElement("span"); s.className = "sw"; s.style.background = p.color;
+    var lab = document.createElement("span");
+    lab.textContent = (i+1) + "·P" + (state.players.indexOf(p)+1);
+    var x = document.createElement("button");
+    x.type = "button"; x.textContent = "×";
+    x.setAttribute("aria-label","Remove touch " + (i+1));
+    x.addEventListener("click", function(){ state.seq.splice(i,1); stop(); renderAll(); });
+    chip.appendChild(s); chip.appendChild(lab); chip.appendChild(x);
+    box.appendChild(chip);
+  });
+}
+function renderMetrics(){
+  var m = metrics(), dl = $("metrics");
+  dl.textContent = "";
+  function add(k, v, cls){
+    var dt = document.createElement("dt"); dt.textContent = k;
+    var dd = document.createElement("dd"); dd.textContent = v; if(cls) dd.className = cls;
+    dl.appendChild(dt); dl.appendChild(dd);
+  }
+  add("Players", String(m.players));
+  add("Passes", String(m.passes));
+  add("Touches", String(m.touches));
+  add("Mean pass distance", m.mean.toFixed(3) + " sw");
+  add("Shortest / longest", m.min.toFixed(3) + " / " + m.max.toFixed(3));
+  add("Closest two players", m.minSep ? m.minSep.toFixed(3) + " sw" : "—",
+      m.offenders.length ? "bad" : (m.minSep ? "good" : ""));
+  add("Players never touched", String(m.untouched), m.untouched ? "bad" : "good");
+  add("Players touched twice+", String(m.repeats));
+  add("Sequence duration", m.total.toFixed(2) + " s");
+
+  var box = $("warnBox"); box.textContent = "";
+  if(m.offenders.length){
+    var w = document.createElement("p"); w.className = "note alert";
+    w.innerHTML = "<strong>" + m.offenders.length + " pair" + (m.offenders.length>1?"s":"") +
+      "</strong> sit closer than the " + MIN_SEP.toFixed(2) +
+      " screen-width minimum. Tap targets may overlap and the ball's path gets hard to follow.";
+    box.appendChild(w);
+  }
+  if(m.untouched === 0 && m.repeats === 0 && m.passes > 0){
+    var n = document.createElement("p"); n.className = "note";
+    n.innerHTML = "Every player is touched exactly once, so the last position can be worked out by <strong>elimination</strong> rather than recalled. Add a repeat, or leave a player out, to close that route.";
+    box.appendChild(n);
+  }
+}
+function renderExport(){
+  var m = metrics();
+  var obj = {
+    task: "19-football-passes",
+    screen: { aspect: "16:10", note: "positions normalised 0-1 of screen width / height" },
+    playerCount: state.players.length,
+    passSequenceLength: m.passes,
+    passSpeed: Number(state.speed.toFixed(3)),
+    passSpeedUnit: "screen-widths/second",
+    windUpMs: state.pauseMs,
+    meanPassDistance: Number(m.mean.toFixed(4)),
+    players: state.players.map(function(p, i){
+      return { id: "P" + (i+1), x: Number((p.x/VW).toFixed(4)), y: Number((p.y/VH).toFixed(4)) };
+    }),
+    sequence: state.seq.map(function(id){ return "P" + (state.players.indexOf(byId(id))+1); })
+  };
+  $("export").textContent = JSON.stringify(obj, null, 2);
+}
+function renderAll(){
+  drawPitch(); drawArrows(); drawPlayers();
+  renderList(); renderChips(); renderMetrics(); renderExport();
+  if(!play.on) drawBall(null);
+  $("playBtn").disabled = passList().length === 0;
+}
+
+function removePlayer(id){
+  state.players = state.players.filter(function(p){ return p.id !== id; });
+  state.seq = state.seq.filter(function(s){ return s !== id; });
+  stop(); renderAll();
+}
+function freeSpot(){
+  var best = null, bestD = -1;
+  for(var i=0;i<400;i++){
+    var c = { x: MARGIN + Math.random()*(VW-2*MARGIN), y: MARGIN + Math.random()*(VH-2*MARGIN) };
+    var d = Infinity;
+    state.players.forEach(function(p){ d = Math.min(d, dist(p,c)); });
+    if(!state.players.length) return c;
+    if(d > bestD){ bestD = d; best = c; }
+  }
+  return best;
+}
+function addPlayer(){
+  if(state.players.length >= 12) return;
+  var s = freeSpot();
+  state.players.push(newPlayer(s.x, s.y));
+  stop(); renderAll();
+}
+function clamp(p){
+  p.x = Math.max(MARGIN, Math.min(VW-MARGIN, p.x));
+  p.y = Math.max(MARGIN, Math.min(VH-MARGIN, p.y));
+}
+function spread(){
+  var need = MIN_SEP * VW;
+  for(var pass=0; pass<220; pass++){
+    var moved = false;
+    for(var i=0;i<state.players.length;i++){
+      for(var j=i+1;j<state.players.length;j++){
+        var a = state.players[i], b = state.players[j];
+        var d = dist(a,b);
+        if(d < need && d > 0.001){
+          var push = (need - d)/2 * 0.5;
+          var ux = (b.x-a.x)/d, uy = (b.y-a.y)/d;
+          a.x -= ux*push; a.y -= uy*push;
+          b.x += ux*push; b.y += uy*push;
+          clamp(a); clamp(b); moved = true;
+        }
+      }
+    }
+    if(!moved) break;
+  }
+  stop(); renderAll();
+}
+
+var drag = null;
+function toVB(e){
+  var pt = svg.createSVGPoint();
+  pt.x = e.clientX; pt.y = e.clientY;
+  var ctm = svg.getScreenCTM();
+  if(!ctm) return {x:0,y:0};
+  var p = pt.matrixTransform(ctm.inverse());
+  return { x:p.x, y:p.y };
+}
+svg.addEventListener("pointerdown", function(e){
+  var g = e.target.closest(".pdot");
+  if(!g) return;
+  var p = byId(g.getAttribute("data-id"));
+  if(!p) return;
+  var v = toVB(e);
+  drag = { p:p, dx:v.x-p.x, dy:v.y-p.y, moved:0, id:e.pointerId };
+  svg.setPointerCapture(e.pointerId);
+  e.preventDefault();
+});
+svg.addEventListener("pointermove", function(e){
+  if(!drag || e.pointerId !== drag.id) return;
+  var v = toVB(e);
+  var nx = v.x - drag.dx, ny = v.y - drag.dy;
+  drag.moved += Math.abs(nx-drag.p.x) + Math.abs(ny-drag.p.y);
+  drag.p.x = nx; drag.p.y = ny; clamp(drag.p);
+  drawArrows(); drawPlayers();
+});
+svg.addEventListener("pointerup", function(e){
+  if(!drag || e.pointerId !== drag.id) return;
+  var wasTap = drag.moved < 12;
+  var p = drag.p;
+  drag = null;
+  try{ svg.releasePointerCapture(e.pointerId); }catch(err){}
+  if(wasTap){ state.seq.push(p.id); stop(); }
+  renderAll();
+});
+svg.addEventListener("keydown", function(e){
+  var g = e.target.closest && e.target.closest(".pdot");
+  if(!g) return;
+  if(e.key === "Enter" || e.key === " "){
+    e.preventDefault();
+    state.seq.push(g.getAttribute("data-id"));
+    stop(); renderAll();
+  }
+});
+
+function timeline(){
+  var ps = passList(), t = 0, segs = [];
+  var pause = state.pauseMs/1000;
+  ps.forEach(function(p){
+    segs.push({ kind:"hold", t0:t, t1:t+pause, from:p.from, to:p.to });
+    t += pause;
+    var fl = sw(p.d) / state.speed;
+    segs.push({ kind:"fly", t0:t, t1:t+fl, from:p.from, to:p.to });
+    t += fl;
+  });
+  return { segs:segs, total:t };
+}
+function ballAt(tl, t){
+  if(!tl.segs.length) return null;
+  if(t >= tl.total){
+    var last = tl.segs[tl.segs.length-1];
+    return { x:last.to.x, y:last.to.y, lift:0, active:last.to.id };
+  }
+  for(var i=0;i<tl.segs.length;i++){
+    var s = tl.segs[i];
+    if(t >= s.t0 && t < s.t1){
+      if(s.kind === "hold") return { x:s.from.x, y:s.from.y, lift:0, active:s.from.id };
+      var u = (t - s.t0) / Math.max(0.0001, s.t1 - s.t0);
+      var a = arcPath(s.from, s.to, 0.10);
+      var mt = 1-u;
+      var x = mt*mt*a.p0.x + 2*mt*u*a.c.x + u*u*a.p1.x;
+      var y = mt*mt*a.p0.y + 2*mt*u*a.c.y + u*u*a.p1.y;
+      return { x:x, y:y, lift: Math.sin(u*Math.PI)*26, active:null };
+    }
+  }
+  return null;
+}
+function highlight(id){
+  var nodes = svg.querySelectorAll("[data-c]");
+  for(var i=0;i<nodes.length;i++){
+    var on = nodes[i].getAttribute("data-c") === id;
+    nodes[i].setAttribute("stroke", on ? "var(--accent)" : "var(--turf)");
+    nodes[i].setAttribute("stroke-width", on ? 12 : 7);
+  }
+}
+function frame(now){
+  if(!play.on) return;
+  var tl = timeline();
+  play.elapsed = (now - play.t0)/1000;
+  var t = Math.min(play.elapsed, tl.total);
+  var at = ballAt(tl, t);
+  drawBall(at);
+  highlight(at ? at.active : null);
+  $("bar").style.width = (tl.total ? (t/tl.total*100) : 0) + "%";
+  $("clock").textContent = t.toFixed(2) + " s / " + tl.total.toFixed(2) + " s";
+  if(play.elapsed >= tl.total){ play.on = false; $("playBtn").textContent = "Play sequence"; return; }
+  play.raf = requestAnimationFrame(frame);
+}
+function start(){
+  var tl = timeline();
+  if(!tl.total) return;
+  play.on = true; play.t0 = performance.now();
+  $("playBtn").textContent = "Playing…";
+  play.raf = requestAnimationFrame(frame);
+}
+function stop(){
+  play.on = false;
+  if(play.raf) cancelAnimationFrame(play.raf);
+  play.elapsed = 0;
+  $("playBtn").textContent = "Play sequence";
+  $("bar").style.width = "0%";
+  var tl = timeline();
+  $("clock").textContent = "0.00 s / " + tl.total.toFixed(2) + " s";
+  drawBall(null); highlight(null);
+}
+
+$("playBtn").addEventListener("click", function(){ if(play.on){ stop(); } else { start(); } });
+$("stopBtn").addEventListener("click", stop);
+$("addBtn").addEventListener("click", addPlayer);
+$("spreadBtn").addEventListener("click", spread);
+$("undoBtn").addEventListener("click", function(){ state.seq.pop(); stop(); renderAll(); });
+$("clearBtn").addEventListener("click", function(){ state.seq = []; stop(); renderAll(); });
+Array.prototype.forEach.call(document.querySelectorAll("[data-preset]"), function(b){
+  b.addEventListener("click", function(){ loadPreset(b.getAttribute("data-preset")); });
+});
+$("speed").addEventListener("input", function(e){
+  state.speed = Number(e.target.value)/100;
+  $("speedV").textContent = state.speed.toFixed(2);
+  stop(); renderMetrics(); renderExport();
+});
+$("pause").addEventListener("input", function(e){
+  state.pauseMs = Number(e.target.value);
+  $("pauseV").textContent = String(state.pauseMs);
+  stop(); renderMetrics(); renderExport();
+});
+$("copyBtn").addEventListener("click", function(){
+  var txt = $("export").textContent;
+  var btn = $("copyBtn");
+  function done(ok){ btn.textContent = ok ? "Copied" : "Press ⌘C"; setTimeout(function(){ btn.textContent = "Copy JSON"; }, 1600); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ done(true); }, function(){ done(false); });
+  } else { done(false); }
+});
+$("themeBtn").addEventListener("click", function(){
+  var r = document.documentElement;
+  var cur = r.getAttribute("data-theme");
+  var dark = cur ? cur === "dark"
+    : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  r.setAttribute("data-theme", dark ? "light" : "dark");
+  renderAll();
+});
+
+/* ------------------------------------------- saved setups (this browser) */
+function readStore(){
+  try{
+    var raw = window.localStorage.getItem(STORE_KEY);
+    var a = raw ? JSON.parse(raw) : [];
+    return Array.isArray(a) ? a : [];
+  }catch(e){ return null; }
+}
+function writeStore(a){
+  try{ window.localStorage.setItem(STORE_KEY, JSON.stringify(a)); return true; }
+  catch(e){ return false; }
+}
+function serialise(name){
+  return {
+    id: "s" + Date.now() + Math.floor(Math.random()*1000),
+    name: name,
+    speed: state.speed, pauseMs: state.pauseMs,
+    players: state.players.map(function(p){ return { x:p.x, y:p.y, color:p.color }; }),
+    seq: state.seq.map(function(id){ return state.players.indexOf(byId(id)); }),
+    savedAt: new Date().toISOString()
+  };
+}
+function restore(d){
+  state.players = []; uid = 0;
+  (d.players||[]).forEach(function(p){
+    var pl = newPlayer(p.x, p.y);
+    if(p.color) pl.color = p.color;
+    state.players.push(pl);
+  });
+  state.seq = (d.seq||[]).map(function(i){
+    return state.players[i] ? state.players[i].id : null;
+  }).filter(Boolean);
+  if(typeof d.speed === "number"){
+    state.speed = d.speed;
+    $("speed").value = String(Math.round(d.speed*100));
+    $("speedV").textContent = d.speed.toFixed(2);
+  }
+  if(typeof d.pauseMs === "number"){
+    state.pauseMs = d.pauseMs;
+    $("pause").value = String(d.pauseMs);
+    $("pauseV").textContent = String(d.pauseMs);
+  }
+  stop(); renderAll();
+}
+function renderSetups(){
+  var list = $("setups"); list.textContent = "";
+  var all = readStore() || [];
+  if(!all.length){
+    var e = document.createElement("li");
+    e.className = "empty"; e.textContent = "Nothing saved yet.";
+    list.appendChild(e); return;
+  }
+  all.slice().reverse().forEach(function(d){
+    var li = document.createElement("li");
+    var nm = document.createElement("span");
+    nm.className = "snm"; nm.textContent = d.name || "Untitled";
+    var dt = document.createElement("span");
+    dt.className = "sdt"; dt.textContent = (d.savedAt || "").slice(0,10);
+    var load = document.createElement("button");
+    load.className = "btn small"; load.type = "button"; load.textContent = "Load";
+    load.addEventListener("click", function(){ restore(d); });
+    var del = document.createElement("button");
+    del.className = "btn small danger"; del.type = "button"; del.textContent = "×";
+    del.setAttribute("aria-label", "Delete " + (d.name || "setup"));
+    del.addEventListener("click", function(){
+      var cur = readStore() || [];
+      writeStore(cur.filter(function(s){ return s.id !== d.id; }));
+      renderSetups();
+    });
+    li.appendChild(nm); li.appendChild(dt); li.appendChild(load); li.appendChild(del);
+    list.appendChild(li);
+  });
+}
+(function initStore(){
+  if(readStore() === null) return;        // storage blocked — leave the panel hidden
+  $("savePanel").hidden = false;
+  $("saveBtn").addEventListener("click", function(){
+    var nm = $("setupName").value.trim();
+    if(!nm){ $("setupName").focus(); return; }
+    var all = readStore() || [];
+    all.push(serialise(nm));
+    if(writeStore(all)){ $("setupName").value = ""; renderSetups(); }
+  });
+  renderSetups();
+})();
+
+loadPreset("medium");
+})();
+</script>
+</body>
+</html>
